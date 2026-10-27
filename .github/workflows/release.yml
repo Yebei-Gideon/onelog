@@ -52,12 +52,13 @@ jobs:
         if: matrix.platform == 'ubuntu-22.04'
         run: |
           sudo apt-get update
-          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libayatana-appindicator3-dev librsvg2-dev
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl wget file libssl-dev libayatana-appindicator3-dev librsvg2-dev libarchive-tools zstd jq
 
       - name: Install frontend dependencies
         run: bun install --frozen-lockfile
 
       - name: Build and Publish Tauri Application
+        id: tauri
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -68,3 +69,91 @@ jobs:
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.matrix.args }}
+
+      - name: Generate Arch Linux PKGBUILD Package
+        if: matrix.platform == 'ubuntu-22.04'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
+          APPIMAGE="src-tauri/target/release/bundle/appimage/OneLog_${VERSION}_amd64.AppImage"
+          
+          if [ -f "$APPIMAGE" ]; then
+            SHA256=$(sha256sum "$APPIMAGE" | awk '{print $1}')
+            
+            mkdir -p arch-package
+            cd arch-package
+
+            # 1. Create PKGBUILD
+            cat <<EOF > PKGBUILD
+          # Maintainer: zero <zero@localhost>
+          pkgname=onelog-bin
+          _pkgname=onelog
+          pkgver=${VERSION}
+          pkgrel=1
+          pkgdesc="OneLog Desktop Application"
+          arch=('x86_64')
+          url="https://github.com/${{ github.repository }}"
+          license=('MIT')
+          depends=('webkit2gtk-4.1' 'gtk3' 'cairo' 'libsoup3' 'hicolor-icon-theme' 'libayatana-appindicator')
+          provides=('onelog')
+          conflicts=('onelog')
+          options=('!strip')
+
+          source_x86_64=("\${pkgname}-\${pkgver}.AppImage::https://github.com/${{ github.repository }}/releases/download/v\${pkgver}/OneLog_\${pkgver}_amd64.AppImage")
+          sha256sums_x86_64=('${SHA256}')
+
+          prepare() {
+              chmod +x "\${srcdir}/\${pkgname}-\${pkgver}.AppImage"
+              "\${srcdir}/\${pkgname}-\${pkgver}.AppImage" --appimage-extract > /dev/null
+          }
+
+          package() {
+              install -Dm755 "\${srcdir}/squashfs-root/AppRun" "\${pkgdir}/usr/bin/\${_pkgname}"
+
+              if [ -d "\${srcdir}/squashfs-root/usr/share/applications" ]; then
+                  cp -r "\${srcdir}/squashfs-root/usr/share/applications" "\${pkgdir}/usr/share/"
+              fi
+              if [ -d "\${srcdir}/squashfs-root/usr/share/icons" ]; then
+                  cp -r "\${srcdir}/squashfs-root/usr/share/icons" "\${pkgdir}/usr/share/"
+              fi
+          }
+          EOF
+
+            # 2. Create .SRCINFO
+            cat <<EOF > .SRCINFO
+          pkgbase = onelog-bin
+          	pkgdesc = OneLog Desktop Application
+          	pkgver = ${VERSION}
+          	pkgrel = 1
+          	url = https://github.com/${{ github.repository }}
+          	arch = x86_64
+          	license = MIT
+          	depends = webkit2gtk-4.1
+          	depends = gtk3
+          	depends = cairo
+          	depends = libsoup3
+          	depends = hicolor-icon-theme
+          	depends = libayatana-appindicator
+          	provides = onelog
+          	conflicts = onelog
+          	options = !strip
+          	source_x86_64 = https://github.com/${{ github.repository }}/releases/download/v${VERSION}/OneLog_${VERSION}_amd64.AppImage
+          	sha256sums_x86_64 = ${SHA256}
+
+          pkgname = onelog-bin
+          EOF
+
+            # 3. Create .gitignore
+            cat <<EOF > .gitignore
+          /*.tar.*
+          /pkg
+          /src
+          /onelog
+          EOF
+
+            # Create tarball and attach to Release
+            tar -czvf ../onelog-arch.tar.gz PKGBUILD .SRCINFO .gitignore
+            cd ..
+            gh release upload "v${VERSION}" onelog-arch.tar.gz --clobber
+          fi
