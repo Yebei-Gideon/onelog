@@ -111,12 +111,16 @@ jobs:
           package() {
               install -Dm755 "\${srcdir}/squashfs-root/AppRun" "\${pkgdir}/usr/bin/\${_pkgname}"
 
-              if [ -d "\${srcdir}/squashfs-root/usr/share/applications" ]; then
-                  cp -r "\${srcdir}/squashfs-root/usr/share/applications" "\${pkgdir}/usr/share/"
-              fi
+              find "\${srcdir}/squashfs-root" -name "*.desktop" -exec install -Dm644 {} "\${pkgdir}/usr/share/applications/\${_pkgname}.desktop" \; 2>/dev/null || true
+
               if [ -d "\${srcdir}/squashfs-root/usr/share/icons" ]; then
+                  mkdir -p "\${pkgdir}/usr/share"
                   cp -r "\${srcdir}/squashfs-root/usr/share/icons" "\${pkgdir}/usr/share/"
               fi
+
+              find "\${pkgdir}" -type d -exec chmod 755 {} +
+              find "\${pkgdir}" -type f -exec chmod 644 {} +
+              chmod 755 "\${pkgdir}/usr/bin/\${_pkgname}"
           }
           EOF
 
