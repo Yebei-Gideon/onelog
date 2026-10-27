@@ -2,7 +2,7 @@
 <script setup lang="ts">
 withDefaults(
   defineProps<{
-    size?: "sm" | "md" | "lg";
+    size?: "sm" | "md" | "lg" | "xl";
     showText?: boolean;
   }>(),
   {
@@ -13,53 +13,75 @@ withDefaults(
 </script>
 
 <template>
-  <div class="inline-flex items-center gap-2 font-bold group select-none shrink-0">
-    <!-- Animated Transparent Stack Icon -->
+  <div class="inline-flex items-center font-bold group select-none shrink-0">
+    <!-- Flexible Responsive Logo Container -->
     <div
-      class="relative flex items-center justify-center shrink-0"
+      class="relative flex items-center shrink-0 transition-all duration-200"
       :class="[
-        size === 'sm' ? 'w-7 h-7' : size === 'lg' ? 'w-10 h-10' : 'w-8.5 h-8.5',
+        size === 'sm'
+          ? 'h-7 sm:h-8'
+          : size === 'lg'
+            ? 'h-10 sm:h-12'
+            : size === 'xl'
+              ? 'h-12 sm:h-14'
+              : 'h-9 sm:h-11',
       ]"
     >
       <svg
-        viewBox="0 0 24 24"
-        fill="none"
         xmlns="http://www.w3.org/2000/svg"
-        class="w-full h-full overflow-visible"
+        :viewBox="showText ? '0 0 125 28' : '0 0 24 28'"
+        class="h-full w-auto block overflow-visible"
+        fill="none"
       >
-        <!-- Top Stack Layer -->
-        <path
-          d="M12 2L2 7L12 12L22 7L12 2Z"
-          class="fill-primary-500 animate-stack-top"
-        />
-        <!-- Middle Stack Layer -->
-        <path
-          d="M2 12L12 17L22 12"
-          class="stroke-neutral-800 dark:stroke-neutral-200 animate-stack-mid"
-          stroke-width="2.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
-        <!-- Bottom Stack Layer -->
-        <path
-          d="M2 17L12 22L22 17"
-          class="stroke-primary-500/80 dark:stroke-primary-400/80 animate-stack-bottom"
-          stroke-width="2.5"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-        />
+        <defs>
+          <!-- Animated Gradient Definition for Text -->
+          <linearGradient
+            id="text-gradient"
+            x1="0%"
+            y1="0%"
+            x2="100%"
+            y2="0%"
+          >
+            <stop offset="0%" class="gradient-stop-1" />
+            <stop offset="50%" class="gradient-stop-2" />
+            <stop offset="100%" class="gradient-stop-3" />
+          </linearGradient>
+        </defs>
+
+        <!-- Stack Icon Group -->
+        <g transform="translate(0, 2)">
+          <!-- Top Layer -->
+          <path d="M12 2L2 7L12 12L22 7L12 2Z" class="animate-stack-top" />
+
+          <!-- Middle Layer -->
+          <path
+            d="M2 12L12 17L22 12"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="animate-stack-mid"
+          />
+
+          <!-- Bottom Layer -->
+          <path
+            d="M2 17L12 22L22 17"
+            stroke-width="2.5"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            class="animate-stack-bottom"
+          />
+        </g>
+
+        <!-- Animated Brand Title -->
+        <text
+          v-if="showText"
+          x="32"
+          y="20"
+          class="brand-text font-bold"
+          font-size="20"
+          font-weight="bold"
+        >OneLog</text>
       </svg>
     </div>
-
-    <!-- Dynamic Brand Title (Hidden on small mobile screens) -->
-    <span
-      v-if="showText"
-      class="hidden sm:inline-block font-extrabold tracking-tight text-neutral-900 dark:text-white transition-colors duration-200"
-      :class="[
-        size === 'sm' ? 'text-base' : size === 'lg' ? 'text-2xl' : 'text-xl',
-      ]"
-    >
-      One<span class="text-primary-500">Log</span>
-    </span>
   </div>
 </template>

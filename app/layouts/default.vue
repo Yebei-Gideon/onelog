@@ -4,12 +4,16 @@
 
 <template>
   <div>
+    <CommonAppHeader />
     <UMain>
-      <slot />
+      <UContainer>
+        <slot />
+      </UContainer>
     </UMain>
+    <CommonAppFooter />
   </div>
 </template>
 
-<style scoped>
+<style>
 
 </style>

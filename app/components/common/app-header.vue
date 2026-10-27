@@ -16,9 +16,12 @@ const { user } = useAuth();
         : 'bg-transparent border-transparent',
     ]"
   >
-    <UContainer class="h-16 sm:h-20 flex items-center justify-between gap-3">
+    <UContainer class="h-16 sm:h-20 flex items-center justify-between gap-4">
       <!-- Brand Logo -->
-      <NuxtLink to="/" class="focus-visible:outline-2 focus-visible:outline-primary-500 rounded-sm shrink-0">
+      <NuxtLink
+        to="/"
+        class="focus-visible:outline-2 focus-visible:outline-primary-500 rounded-sm shrink-0 flex items-center"
+      >
         <CommonAppLogo size="md" />
       </NuxtLink>
 
@@ -32,7 +35,7 @@ const { user } = useAuth();
             to="/dashboard"
             color="primary"
             variant="solid"
-            size="sm"
+            size="md"
             icon="i-lucide-layout-dashboard"
             trailing
             class="font-bold rounded-sm shadow-xs whitespace-nowrap"
@@ -47,7 +50,7 @@ const { user } = useAuth();
             to="/login"
             variant="ghost"
             color="neutral"
-            size="sm"
+            size="md"
             icon="i-lucide-log-in"
             trailing
             class="font-semibold rounded-sm whitespace-nowrap"
@@ -58,7 +61,7 @@ const { user } = useAuth();
             to="/signup"
             color="primary"
             variant="solid"
-            size="sm"
+            size="md"
             icon="i-lucide-arrow-right"
             trailing
             class="font-bold rounded-sm shadow-xs whitespace-nowrap"
