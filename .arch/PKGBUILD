@@ -1,0 +1,51 @@
+# Maintainer: zero <zero@localhost>
+pkgname=onelog-bin
+_pkgname=onelog
+pkgver=__VERSION__
+pkgrel=1
+pkgdesc="OneLog Desktop Application"
+arch=('x86_64')
+url="https://github.com/__REPOSITORY__"
+license=('MIT')
+depends=('webkit2gtk-4.1' 'gtk3' 'cairo' 'libsoup3' 'hicolor-icon-theme' 'libayatana-appindicator')
+provides=('onelog')
+conflicts=('onelog')
+options=('!strip')
+
+source_x86_64=("${pkgname}-${pkgver}.AppImage::https://github.com/__REPOSITORY__/releases/download/v${pkgver}/OneLog_${pkgver}_amd64.AppImage")
+sha256sums_x86_64=('__SHA256__')
+
+prepare() {
+    chmod +x "${srcdir}/${pkgname}-${pkgver}.AppImage"
+    "${srcdir}/${pkgname}-${pkgver}.AppImage" --appimage-extract > /dev/null
+}
+
+package() {
+    # 1. Install extracted AppImage payload to /opt/onelog (preserving file execution permissions)
+    install -dm755 "${pkgdir}/opt/${_pkgname}"
+    cp -a "${srcdir}/squashfs-root/"* "${pkgdir}/opt/${_pkgname}/"
+
+    # 2. Create entrypoint launcher in /usr/bin/onelog
+    install -dm755 "${pkgdir}/usr/bin"
+    cat <<EOF > "${pkgdir}/usr/bin/${_pkgname}"
+#!/bin/sh
+exec /opt/${_pkgname}/AppRun "\$@"
+EOF
+    chmod 755 "${pkgdir}/usr/bin/${_pkgname}"
+
+    # 3. Copy desktop launcher
+    if [ -d "${pkgdir}/opt/${_pkgname}/usr/share/applications" ]; then
+        install -dm755 "${pkgdir}/usr/share/applications"
+        find "${pkgdir}/opt/${_pkgname}/usr/share/applications" -name "*.desktop" -exec cp {} "${pkgdir}/usr/share/applications/${_pkgname}.desktop" \;
+        sed -i "s|Exec=.*|Exec=/usr/bin/${_pkgname}|g" "${pkgdir}/usr/share/applications/${_pkgname}.desktop" 2>/dev/null || true
+    fi
+
+    # 4. Copy system icons
+    if [ -d "${pkgdir}/opt/${_pkgname}/usr/share/icons" ]; then
+        install -dm755 "${pkgdir}/usr/share"
+        cp -r "${pkgdir}/opt/${_pkgname}/usr/share/icons" "${pkgdir}/usr/share/"
+    fi
+
+    # 5. Fix directory permissions for pacman compliance
+    find "${pkgdir}" -type d -exec chmod 755 {} +
+}
