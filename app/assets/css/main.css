@@ -18,7 +18,6 @@
 
   /* 1. Register the keyframes */
   @keyframes stackTop {
-
     0%,
     100% {
       transform: translateY(0px);
@@ -30,7 +29,6 @@
   }
 
   @keyframes stackMid {
-
     0%,
     100% {
       transform: translateY(0px);
@@ -42,7 +40,6 @@
   }
 
   @keyframes stackBottom {
-
     0%,
     100% {
       transform: translateY(0px);
