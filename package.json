@@ -38,7 +38,7 @@
     "vue-tsc": "^3.3.13"
   },
   "lint-staged": {
-    "*.{js,ts,vue,json,md}": [
+    "*.{js,ts,vue,json,md,yml}": [
       "eslint --fix"
     ]
   }
