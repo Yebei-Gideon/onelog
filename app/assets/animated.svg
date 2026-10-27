@@ -1,0 +1,112 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 28" width="120" height="28" fill="none">
+  <defs>
+    <!-- Animated Gradient Definition for Text -->
+    <linearGradient id="text-gradient" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" class="gradient-stop-1" />
+      <stop offset="50%" class="gradient-stop-2" />
+      <stop offset="100%" class="gradient-stop-3" />
+    </linearGradient>
+
+    <style>
+      :root {
+        --stroke-mid-base: #1f2937;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --stroke-mid-base: #e5e7eb;
+        }
+      }
+
+      /* Stack Movement Animations */
+      @keyframes stackTop {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(-2.5px); }
+      }
+
+      @keyframes stackBottom {
+        0%, 100% { transform: translateY(0px); }
+        50% { transform: translateY(2.5px); }
+      }
+
+      /* Icon Color Cycling Keyframes */
+      @keyframes iconTopColor {
+        0%, 100% { fill: #84cc16; }
+        33% { fill: #06b6d4; }
+        66% { fill: #8b5cf6; }
+      }
+
+      @keyframes iconMidColor {
+        0%, 100% { stroke: var(--stroke-mid-base); }
+        33% { stroke: #06b6d4; }
+        66% { stroke: #8b5cf6; }
+      }
+
+      @keyframes iconBottomColor {
+        0%, 100% { stroke: rgba(132, 204, 22, 0.85); }
+        33% { stroke: rgba(6, 182, 212, 0.85); }
+        66% { stroke: rgba(139, 92, 246, 0.85); }
+      }
+
+      .animate-stack-top {
+        animation: stackTop 2.2s ease-in-out infinite, iconTopColor 5s ease-in-out infinite;
+        transform-origin: 12px 7px;
+      }
+
+      .animate-stack-mid {
+        animation: iconMidColor 5s ease-in-out infinite;
+      }
+
+      .animate-stack-bottom {
+        animation: stackBottom 2.2s ease-in-out infinite, iconBottomColor 5s ease-in-out infinite;
+        transform-origin: 12px 19.5px;
+      }
+
+      /* Text Gradient Animation Keyframes */
+      @keyframes colorShift1 {
+        0%, 100% { stop-color: #84cc16; }
+        33% { stop-color: #06b6d4; }
+        66% { stop-color: #8b5cf6; }
+      }
+
+      @keyframes colorShift2 {
+        0%, 100% { stop-color: #06b6d4; }
+        33% { stop-color: #8b5cf6; }
+        66% { stop-color: #ec4899; }
+      }
+
+      @keyframes colorShift3 {
+        0%, 100% { stop-color: #8b5cf6; }
+        33% { stop-color: #ec4899; }
+        66% { stop-color: #84cc16; }
+      }
+
+      .gradient-stop-1 { animation: colorShift1 5s ease-in-out infinite; }
+      .gradient-stop-2 { animation: colorShift2 5s ease-in-out infinite; }
+      .gradient-stop-3 { animation: colorShift3 5s ease-in-out infinite; }
+
+      .brand-text {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+        fill: url(#text-gradient);
+      }
+    </style>
+  </defs>
+
+  <!-- Stack Icon Group -->
+  <g transform="translate(0, 2)">
+    <!-- Top Layer (Color + Motion) -->
+    <path d="M12 2L2 7L12 12L22 7L12 2Z" class="animate-stack-top" />
+
+    <!-- Middle Layer (Color Transition) -->
+    <path d="M2 12L12 17L22 12" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="animate-stack-mid" />
+
+    <!-- Bottom Layer (Color + Motion) -->
+    <path d="M2 17L12 22L22 17" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="animate-stack-bottom" />
+  </g>
+
+  <!-- Animated Brand Title -->
+  <text x="32" y="19" class="brand-text">OneLog</text>
+</svg>

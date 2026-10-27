@@ -13,12 +13,23 @@ export default withNuxt(
       typescript: true,
       formatters: true,
       markdown: true,
+      jsonc: true,
       stylistic: {
         indent: 2,
         semi: true,
         quotes: "double",
       },
-      ignores: [".pnpm-store/**", "**/migrations/*"],
+      ignores: [
+        ".pnpm-store/**",
+        "**/migrations/*",
+        "**/dist/*",
+        "**/public/*",
+        "**/node_modules/*",
+        "**/src-tauri/gen/*",
+        "**/src-tauri/target/*",
+        "**/src-tauri/Cargo.toml",
+        "**/.output/*",
+      ],
     },
     {
       rules: {

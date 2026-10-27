@@ -6,7 +6,10 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
     "preview": "nuxt preview",
+    "generate": "nuxt generate",
     "postinstall": "nuxt prepare",
     "lint": "eslint . --ignore-pattern .gitignore",
     "lint:fix": "eslint . --fix --ignore-pattern .gitignore",
@@ -23,6 +26,9 @@
   "devDependencies": {
     "@antfu/eslint-config": "^10.0.0",
     "@nuxt/eslint": "^1.17.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@tauri-apps/api": "^2.12.4",
+    "@tauri-apps/cli": "^2.12.4",
     "eslint": "^10.13.0",
     "eslint-plugin-better-tailwindcss": "^4.10.0",
     "eslint-plugin-format": "^2.0.1",

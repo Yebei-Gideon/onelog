@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 28" width="120" height="28" fill="none">
+  <defs>
+    <style>
+      :root {
+        --primary: #84cc16;
+        --text-color: #0f172a;
+        --stroke-mid: #1f2937;
+        --stroke-bottom: rgba(132, 204, 22, 0.8);
+      }
+
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --text-color: #ffffff;
+          --stroke-mid: #e5e7eb;
+          --stroke-bottom: rgba(163, 230, 53, 0.8);
+        }
+      }
+
+      @keyframes stackTop {
+        0%, 100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(-2.5px);
+        }
+      }
+
+      @keyframes stackBottom {
+        0%, 100% {
+          transform: translateY(0px);
+        }
+        50% {
+          transform: translateY(2.5px);
+        }
+      }
+
+      .animate-stack-top {
+        animation: stackTop 2.2s ease-in-out infinite;
+        transform-origin: 12px 7px;
+      }
+
+      .animate-stack-bottom {
+        animation: stackBottom 2.2s ease-in-out infinite;
+        transform-origin: 12px 19.5px;
+      }
+
+      .brand-text {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        font-size: 20px;
+        font-weight: 800;
+        letter-spacing: -0.025em;
+      }
+    </style>
+  </defs>
+
+  <!-- Stack Icon Group (Shifted down slightly to align with text baseline) -->
+  <g transform="translate(0, 2)">
+    <!-- Top Stack Layer -->
+    <path d="M12 2L2 7L12 12L22 7L12 2Z" fill="var(--primary)" class="animate-stack-top" />
+
+    <!-- Middle Stack Layer -->
+    <path d="M2 12L12 17L22 12" stroke="var(--stroke-mid)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+
+    <!-- Bottom Stack Layer -->
+    <path d="M2 17L12 22L22 17" stroke="var(--stroke-bottom)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="animate-stack-bottom" />
+  </g>
+
+  <!-- Dynamic Brand Title -->
+  <text x="32" y="19" class="brand-text">
+    <tspan fill="var(--text-color)">One</tspan><tspan fill="var(--primary)">Log</tspan>
+  </text>
+</svg>
