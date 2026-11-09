@@ -1,19 +1,19 @@
 // app/types/platform.ts
-export type PlatformCategory
-  = | "social"
-    | "developer"
-    | "content"
-    | "messaging"
-    | "professional";
-
-export type PlatformCategoryFilter = PlatformCategory | "all";
-
-export type PlatformStatus = "active" | "beta" | "trending";
-
-export type CategoryOption = {
-  label: string;
-  value: PlatformCategoryFilter;
+export type PlatformCategory = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
   icon: string;
+  color: string;
+};
+
+export type PlatformStatus = {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  color: string;
 };
 
 export type SocialPlatform = {
@@ -22,14 +22,19 @@ export type SocialPlatform = {
   slug: string;
   logo: string;
   description: string;
-  category: PlatformCategory;
   url: string;
-  isFeatured?: boolean;
+  color: string;
+  badge?: string | null;
+  monthlyUsers?: string | null;
+  isFeatured: boolean;
+  isCustom?: boolean;
+  userId?: string | null;
   tags: string[];
-  color: string; // Brand Hex Color (e.g., '#1DA1F2')
-  badge?: string;
-  status?: PlatformStatus;
-  monthlyUsers?: string;
+  category: PlatformCategory;
+  status?: PlatformStatus | null;
+  createdAt?: string;
+  updatedAt?: string;
 };
 
+export type PlatformCategoryFilter = string;
 export type ViewMode = "grid" | "list";

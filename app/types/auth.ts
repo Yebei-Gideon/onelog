@@ -1,20 +1,20 @@
 // app/types/auth.ts
-export type UserProfile = {
+export type User = {
   id: string;
   email: string;
-  name: string;
-  avatar?: string;
-  provider: "credentials" | "google" | "facebook" | "github" | "apple";
-  createdAt: string;
+  name?: string | null;
+  avatarUrl?: string | null;
+  googleId?: string | null;
+  createdAt?: string;
 };
 
-declare module "#auth-utils" {
-  type User = {
-    id: string;
-    email: string;
-    name: string;
-    avatar?: string;
-    provider: "credentials" | "google" | "facebook" | "github" | "apple";
-    createdAt: string;
-  };
-}
+export type AuthTokens = {
+  accessToken: string;
+  refreshToken: string;
+  sessionId: string;
+};
+
+export type AuthResponse = {
+  user: User;
+  tokens: AuthTokens;
+};

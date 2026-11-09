@@ -1,67 +1,98 @@
 // app/composables/use-auth.ts
 export function useAuth() {
-  const { user, loggedIn, session, clear, fetch: fetchSession } = useUserSession();
   const router = useRouter();
+  const { apiFetch } = useApi();
+
+  const accessToken = useCookie<string | null>("auth_access_token", { default: () => null });
+  const refreshToken = useCookie<string | null>("auth_refresh_token", { default: () => null });
+  const sessionId = useCookie<string | null>("auth_session_id", { default: () => null });
+  const user = useCookie<any | null>("auth_user", { default: () => null });
+
+  if (import.meta.client && !accessToken.value) {
+    try {
+      const stored = JSON.parse(localStorage.getItem("onelog_auth_session") || "null") as {
+        user?: any;
+        tokens?: { accessToken?: string; refreshToken?: string; sessionId?: string };
+      } | null;
+      if (stored?.tokens?.accessToken && stored.tokens.refreshToken && stored.tokens.sessionId && stored.user) {
+        user.value = stored.user;
+        accessToken.value = stored.tokens.accessToken;
+        refreshToken.value = stored.tokens.refreshToken;
+        sessionId.value = stored.tokens.sessionId;
+      }
+    }
+    catch {
+      localStorage.removeItem("onelog_auth_session");
+    }
+  }
+
+  function persistSession(sessionData: {
+    user: any;
+    tokens: { accessToken: string; refreshToken: string; sessionId: string };
+  }) {
+    if (!import.meta.client)
+      return;
+    localStorage.setItem("onelog_auth_session", JSON.stringify(sessionData));
+  }
+
+  const loggedIn = computed(() => !!accessToken.value && !!user.value);
+
+  const saveAuthSession = (sessionData: {
+    user: any;
+    tokens: { accessToken: string; refreshToken: string; sessionId: string };
+  }) => {
+    user.value = sessionData.user;
+    accessToken.value = sessionData.tokens.accessToken;
+    refreshToken.value = sessionData.tokens.refreshToken;
+    sessionId.value = sessionData.tokens.sessionId;
+    persistSession(sessionData);
+  };
 
   const login = async (credentials: { email: string; password: string; rememberMe?: boolean }) => {
-    console.log("[CLIENT AUTH] Sending login request for:", credentials.email);
-    try {
-      const res = await $fetch("/api/auth/login", {
-        method: "POST",
-        body: credentials,
-      });
-      console.log("[CLIENT AUTH] Login API response:", res);
-
-      await fetchSession();
-      console.log("[CLIENT AUTH] Session refreshed. User:", user.value);
-
-      await router.push("/dashboard");
-      return res;
-    }
-    catch (err: any) {
-      console.error("[CLIENT AUTH ERROR] Login failed:", err?.data || err);
-      throw err;
-    }
+    const res = await apiFetch<{ user: any; tokens: any }>("/auth/login", {
+      method: "POST",
+      body: credentials,
+    });
+    saveAuthSession(res);
+    await router.push("/dashboard");
+    return res;
   };
 
   const register = async (data: { name: string; email: string; password: string }) => {
-    console.log("[CLIENT AUTH] Sending register request for:", data.email);
-    try {
-      const res = await $fetch("/api/auth/register", {
-        method: "POST",
-        body: data,
-      });
-      console.log("[CLIENT AUTH] Register API response:", res);
-
-      await fetchSession();
-      console.log("[CLIENT AUTH] Session refreshed. User:", user.value);
-
-      await router.push("/dashboard");
-      return res;
-    }
-    catch (err: any) {
-      console.error("[CLIENT AUTH ERROR] Registration failed:", err?.data || err);
-      throw err;
-    }
+    const res = await apiFetch<{ user: any; tokens: any }>("/auth/register", {
+      method: "POST",
+      body: data,
+    });
+    saveAuthSession(res);
+    await router.push("/dashboard");
+    return res;
   };
 
   const logout = async () => {
-    console.log("[CLIENT AUTH] Logging out...");
     try {
-      await $fetch("/api/auth/logout", { method: "POST" });
+      if (sessionId.value) {
+        await apiFetch("/auth/logout", {
+          method: "POST",
+          body: { sessionId: sessionId.value },
+        });
+      }
     }
     catch (err) {
-      console.error("[CLIENT AUTH ERROR] Logout API failed:", err);
+      console.error("[AUTH] Logout endpoint failed:", err);
     }
     finally {
-      await clear();
+      accessToken.value = null;
+      refreshToken.value = null;
+      sessionId.value = null;
+      user.value = null;
+      if (import.meta.client)
+        localStorage.removeItem("onelog_auth_session");
       await router.push("/login");
     }
   };
 
   const navigateToDashboardIfLoggedIn = () => {
     if (loggedIn.value) {
-      console.log("[CLIENT AUTH] User already authenticated, redirecting to /dashboard");
       return navigateTo("/dashboard");
     }
   };
@@ -69,11 +100,10 @@ export function useAuth() {
   return {
     user,
     loggedIn,
-    session,
     login,
     register,
     logout,
-    fetchSession,
+    saveAuthSession,
     navigateToDashboardIfLoggedIn,
   };
 }

@@ -4,6 +4,7 @@ export type ShellEnvironment = "tauri" | "electron" | "capacitor" | "web";
 export type WorkspacePlatformItem = {
   id: string;
   workspaceId: string;
+  platformId: string;
   platformSlug: string;
   customUrl?: string | null;
   partitionId: string;

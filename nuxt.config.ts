@@ -1,3 +1,4 @@
+// nuxt.config.ts
 import tailwindcss from "@tailwindcss/vite";
 
 export default defineNuxtConfig({
@@ -5,7 +6,7 @@ export default defineNuxtConfig({
     "@nuxt/eslint",
     "@nuxt/ui",
     "@vueuse/nuxt/module",
-    "nuxt-auth-utils",
+    "@nuxtjs/turnstile",
   ],
 
   ssr: false,
@@ -80,6 +81,12 @@ export default defineNuxtConfig({
         clientSecret: process.env.NUXT_OAUTH_APPLE_CLIENT_SECRET,
       },
     },
+
+    // Move public runtimeConfig to top-level
+    public: {
+      turnstileSiteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY || "",
+      apiBaseUrl: process.env.NUXT_PUBLIC_API_BASE_URL || "http://localhost:4000/api/v1",
+    },
   },
 
   ignore: ["**/src-tauri/**"],
@@ -94,7 +101,7 @@ export default defineNuxtConfig({
   },
 
   compatibilityDate: "2026-06-30",
-
+  
   vite: {
     clearScreen: false,
     envPrefix: ["NUXT_", "VITE_", "BUN_", "TAURI_"],
@@ -117,5 +124,9 @@ export default defineNuxtConfig({
         braceStyle: "1tbs",
       },
     },
+  },
+
+  turnstile: {
+    siteKey: process.env.NUXT_PUBLIC_TURNSTILE_SITE_KEY || "",
   },
 });

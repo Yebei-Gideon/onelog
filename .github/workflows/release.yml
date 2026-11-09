@@ -68,7 +68,68 @@ jobs:
           releaseBody: See the assets below to download and install OneLog.
           releaseDraft: true
           prerelease: false
-          args: ${{ matrix.matrix.args }}
+          args: ${{ matrix.args }}
+
+  build-android:
+    name: Build Android
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Initialize Android project
+        run: bunx tauri android init
+
+      - name: Build Android APK and bundle
+        run: bunx tauri android build --apk --aab
+
+  build-ios:
+    name: Build iOS
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,x86_64-apple-ios
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Initialize iOS project
+        run: bunx tauri ios init
+
+      - name: Build iOS app
+        run: bunx tauri ios build
 
       - name: Generate Arch Linux Package Archive
         if: matrix.platform == 'ubuntu-22.04'
