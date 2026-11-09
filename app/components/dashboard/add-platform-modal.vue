@@ -1,3 +1,4 @@
+<!-- app/components/dashboard/add-platform-modal.vue -->
 <script setup lang="ts">
 const props = defineProps<{
   open: boolean;
@@ -17,7 +18,7 @@ const form = reactive({
   url: "",
   categoryId: "",
   description: "",
-  color: "#3B82F6",
+  color: "#6366F1",
   logo: "i-lucide-globe",
 });
 
@@ -32,7 +33,9 @@ onMounted(async () => {
       if (platform.category)
         categories.set(platform.category.id, platform.category);
     });
-    rawCategories.value = [...categories.values()];
+    rawCategories.value = [
+      ...categories.values(),
+    ];
     form.categoryId = rawCategories.value[0]?.id || "";
   }
   catch (error) {
@@ -72,48 +75,133 @@ async function handleSubmit() {
 <template>
   <UModal
     :open="open"
-    title="Add Private Custom Platform"
-    description="Create a personal shortcut visible only to your account."
+    title="Add Private Custom App Shortcut"
+    description="Create a custom endpoint shortcut accessible inside your workspace."
     @update:open="value => emit('update:open', value)"
   >
     <template #body>
       <form class="space-y-4" @submit.prevent="handleSubmit">
+        <!-- Card Live Preview -->
+        <div class="p-3 bg-neutral-100/70 dark:bg-neutral-900/70 border border-neutral-200 dark:border-neutral-800 rounded-xs flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="p-2 rounded-xs bg-white dark:bg-neutral-950 border border-neutral-200/60 dark:border-neutral-800">
+              <UIcon
+                :name="form.logo || 'i-lucide-globe'"
+                class="w-6 h-6"
+                :style="{ color: form.color }"
+              />
+            </div>
+            <div>
+              <h4 class="font-bold text-xs text-neutral-900 dark:text-white">
+                {{ form.name || 'Custom Application Name' }}
+              </h4>
+              <p class="text-[11px] text-neutral-400 truncate max-w-[220px]">
+                {{ form.url || 'https://app.example.com' }}
+              </p>
+            </div>
+          </div>
+          <UBadge
+            color="warning"
+            variant="subtle"
+            size="xs"
+            class="font-mono rounded-xs"
+          >
+            Private App
+          </UBadge>
+        </div>
+
         <UFormField label="Platform Name" required>
-          <UInput v-model="form.name" placeholder="e.g. Internal Admin Portal" required />
+          <UInput
+            v-model="form.name"
+            placeholder="e.g. Internal Admin Portal"
+            icon="i-lucide-layout"
+            required
+            class="rounded-xs"
+          />
         </UFormField>
-        <UFormField label="URL" required>
-          <UInput v-model="form.url" type="url" placeholder="https://admin.company.com" required />
+
+        <UFormField label="Target Web Address (URL)" required>
+          <UInput
+            v-model="form.url"
+            type="url"
+            placeholder="https://admin.company.com"
+            icon="i-lucide-link"
+            required
+            class="rounded-xs"
+          />
         </UFormField>
+
         <UFormField label="Category" required>
           <select
             v-model="form.categoryId"
-            class="w-full rounded-xs border border-neutral-300 bg-white px-3 py-2 text-sm dark:border-neutral-700 dark:bg-neutral-900"
+            class="w-full rounded-xs border border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-900 px-3 py-2 text-sm text-neutral-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500"
           >
             <option value="" disabled>
-              Select a category
+              Select a category...
             </option>
-            <option v-for="category in rawCategories" :key="category.id" :value="category.id">
+            <option
+              v-for="category in rawCategories"
+              :key="category.id"
+              :value="category.id"
+            >
               {{ category.name }}
             </option>
           </select>
         </UFormField>
+
         <UFormField label="Description">
-          <UInput v-model="form.description" placeholder="Brief notes..." />
+          <UInput
+            v-model="form.description"
+            placeholder="Brief notes or description..."
+            icon="i-lucide-file-text"
+            class="rounded-xs"
+          />
         </UFormField>
+
         <div class="grid grid-cols-2 gap-3">
-          <UFormField label="Brand Color">
-            <UInput v-model="form.color" type="color" class="h-9 w-full cursor-pointer" />
+          <UFormField label="Accent Color">
+            <div class="flex items-center gap-2">
+              <UInput
+                v-model="form.color"
+                type="color"
+                class="h-9 w-14 cursor-pointer p-0.5 rounded-xs"
+              />
+              <UInput
+                v-model="form.color"
+                placeholder="#6366F1"
+                class="rounded-xs font-mono text-xs flex-1"
+              />
+            </div>
           </UFormField>
+
           <UFormField label="Icon Class">
-            <UInput v-model="form.logo" placeholder="i-lucide-globe" />
+            <UInput
+              v-model="form.logo"
+              placeholder="i-lucide-globe"
+              icon="i-lucide-smile"
+              class="rounded-xs font-mono text-xs"
+            />
           </UFormField>
         </div>
-        <div class="flex justify-end gap-2 pt-2">
-          <UButton color="neutral" variant="ghost" type="button" @click="emit('update:open', false)">
+
+        <div class="flex justify-end gap-2 pt-3 border-t border-neutral-200/60 dark:border-neutral-800/60">
+          <UButton
+            color="neutral"
+            variant="ghost"
+            type="button"
+            class="rounded-xs"
+            @click="emit('update:open', false)"
+          >
             Cancel
           </UButton>
-          <UButton type="submit" color="primary" :loading="isSubmitting" icon="i-lucide-plus">
-            Create Private Platform
+          <UButton
+            type="submit"
+            color="primary"
+            class="font-bold rounded-xs shadow-xs"
+            :loading="isSubmitting"
+            icon="i-lucide-plus"
+          >
+            Create Custom Shortcut
           </UButton>
         </div>
       </form>

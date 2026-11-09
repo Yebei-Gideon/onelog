@@ -1,7 +1,9 @@
 // app/composables/use-platform-launcher.ts
 import type { ShellEnvironment } from "~/types/workspace";
 
-export type ActivePlatformView = {
+export type OpenTab = {
+  id: string;
+  platformId: string;
   slug: string;
   name: string;
   url: string;
@@ -10,13 +12,27 @@ export type ActivePlatformView = {
   partitionId: string;
 };
 
+const creatingWebviews = new Set<string>();
+const latestRequestedBounds = new Map<string, { x: number; y: number; width: number; height: number }>();
+
 export function usePlatformLauncher() {
   const environment = ref<ShellEnvironment>("web");
-  const activeView = useState<ActivePlatformView | null>("active-platform-view", () => null);
-  const isViewerOpen = computed(() => activeView.value !== null);
+  const openTabs = useState<OpenTab[]>("open-platform-tabs", () => []);
+  const activeTabId = useState<string | null>("active-platform-tab-id", () => null);
+  const readyTabs = useState<string[]>("ready-platform-tabs", () => []);
+
+  const activeTab = computed(() =>
+    openTabs.value.find(t => t.id === activeTabId.value) || null,
+  );
 
   function webviewLabel(slug: string, partitionId: string) {
-    return `embed_${slug}_${partitionId}`.replace(/[^\w-]/g, "_");
+    let hash = 0;
+    for (let i = 0; i < partitionId.length; i++) {
+      hash = (hash << 5) - hash + partitionId.charCodeAt(i);
+      hash |= 0;
+    }
+    const hashHex = Math.abs(hash).toString(36);
+    return `embed_${slug}_${hashHex}`.toLowerCase().replace(/[^\w-]/g, "_");
   }
 
   function dataStoreIdentifier(partitionId: string) {
@@ -28,11 +44,11 @@ export function usePlatformLauncher() {
       hash = Math.imul(hash, 16777619);
     }
     for (let index = 0; index < 4; index++) {
-      const value = Math.imul(hash ^ (index * 0x9e3779b9), 2246822519);
-      identifier[index * 4] = value & 0xff;
-      identifier[index * 4 + 1] = (value >>> 8) & 0xff;
-      identifier[index * 4 + 2] = (value >>> 16) & 0xff;
-      identifier[index * 4 + 3] = (value >>> 24) & 0xff;
+      const value = Math.imul(hash ^ (index * 0x9E3779B9), 2246822519);
+      identifier[index * 4] = value & 0xFF;
+      identifier[index * 4 + 1] = (value >>> 8) & 0xFF;
+      identifier[index * 4 + 2] = (value >>> 16) & 0xFF;
+      identifier[index * 4 + 3] = (value >>> 24) & 0xFF;
     }
     return identifier;
   }
@@ -71,129 +87,201 @@ export function usePlatformLauncher() {
     }
   }
 
-  async function updateWebviewBounds(bounds: { x: number; y: number; width: number; height: number }) {
-    if (environment.value !== "tauri" || !import.meta.client || !activeView.value)
+  function markTabReady(tabId: string) {
+    if (!readyTabs.value.includes(tabId)) {
+      readyTabs.value.push(tabId);
+    }
+  }
+
+  async function syncWebview(
+    tabId: string,
+    bounds: { x: number; y: number; width: number; height: number },
+  ) {
+    if (environment.value !== "tauri" || !import.meta.client)
+      return;
+
+    const tab = openTabs.value.find(t => t.id === tabId);
+    if (!tab)
       return;
 
     try {
       const { Webview } = await import("@tauri-apps/api/webview");
+      const { getCurrentWindow } = await import("@tauri-apps/api/window");
       const { LogicalPosition, LogicalSize } = await import("@tauri-apps/api/dpi");
 
-      const label = webviewLabel(activeView.value.slug, activeView.value.partitionId);
+      const label = webviewLabel(tab.slug, tab.partitionId);
+      const appWindow = getCurrentWindow();
 
-      const webview = await Webview.getByLabel(label);
+      // Always update registry with latest DOM measurements
+      latestRequestedBounds.set(label, bounds);
+
+      // Hide all non-active platform webviews immediately
+      const all = await Webview.getAll();
+      for (const wv of all) {
+        if (wv.label.startsWith("embed_") && wv.label !== label) {
+          await wv.hide();
+        }
+      }
+
+      let webview = await Webview.getByLabel(label);
+
+      // 1. Existing webview instance: apply latest bounds immediately
       if (webview) {
-        await webview.setPosition(new LogicalPosition(Math.round(bounds.x), Math.round(bounds.y)));
-        await webview.setSize(new LogicalSize(Math.round(bounds.width), Math.round(bounds.height)));
+        const target = latestRequestedBounds.get(label) || bounds;
+        const pos = new LogicalPosition(Math.round(target.x), Math.round(target.y));
+        const size = new LogicalSize(Math.max(1, Math.round(target.width)), Math.max(1, Math.round(target.height)));
+
+        await webview.setPosition(pos);
+        await webview.setSize(size);
+        await webview.show();
+        await webview.setFocus();
+        markTabReady(tabId);
+        return;
+      }
+
+      // 2. Prevent concurrent duplicate instantiation calls
+      if (creatingWebviews.has(label))
+        return;
+      creatingWebviews.add(label);
+
+      const initBounds = latestRequestedBounds.get(label) || bounds;
+
+      try {
+        webview = new Webview(appWindow, label, {
+          url: tab.url,
+          x: Math.round(initBounds.x),
+          y: Math.round(initBounds.y),
+          width: Math.max(1, Math.round(initBounds.width)),
+          height: Math.max(1, Math.round(initBounds.height)),
+          focus: true,
+          dragDropEnabled: true,
+          dataStoreIdentifier: dataStoreIdentifier(tab.partitionId),
+        });
+
+        const applyLatestBounds = async () => {
+          creatingWebviews.delete(label);
+          try {
+            const existing = await Webview.getByLabel(label);
+            if (existing) {
+              const fresh = latestRequestedBounds.get(label) || bounds;
+              const pos = new LogicalPosition(Math.round(fresh.x), Math.round(fresh.y));
+              const size = new LogicalSize(Math.max(1, Math.round(fresh.width)), Math.max(1, Math.round(fresh.height)));
+
+              await existing.setPosition(pos);
+              await existing.setSize(size);
+              await existing.show();
+              await existing.setFocus();
+              markTabReady(tabId);
+            }
+          }
+          catch (error) {
+            console.error("[TAURI EMBED SETUP ERROR]", error);
+          }
+        };
+
+        webview.once("tauri://created", applyLatestBounds);
+        webview.once("tauri://error", applyLatestBounds);
+      }
+      catch (createErr) {
+        creatingWebviews.delete(label);
+        const fallback = await Webview.getByLabel(label);
+        if (fallback) {
+          const fresh = latestRequestedBounds.get(label) || bounds;
+          const pos = new LogicalPosition(Math.round(fresh.x), Math.round(fresh.y));
+          const size = new LogicalSize(Math.max(1, Math.round(fresh.width)), Math.max(1, Math.round(fresh.height)));
+
+          await fallback.setPosition(pos);
+          await fallback.setSize(size);
+          await fallback.show();
+          await fallback.setFocus();
+          markTabReady(tabId);
+        }
       }
     }
     catch (e) {
-      console.warn("[TAURI BOUNDS UPDATE ERROR]", e);
+      console.warn("[TAURI SYNC ERROR]", e);
     }
   }
 
-  async function launchPlatform(opts: {
+  async function openPlatform(opts: {
+    platformId: string;
     platformSlug: string;
     platformName: string;
     targetUrl: string;
     workspaceId: string;
     partitionId?: string;
     icon?: string;
-    bounds?: { x: number; y: number; width: number; height: number };
   }) {
     const partition = opts.partitionId || `persist:${opts.workspaceId}_${opts.platformSlug}`;
+    const partitionShort = partition.split("_").pop()?.slice(-8) || "main";
+    const id = `${opts.platformSlug}-${partitionShort}`.toLowerCase().replace(/[^\w-]/g, "-");
 
-    activeView.value = {
-      slug: opts.platformSlug,
-      name: opts.platformName,
-      url: opts.targetUrl,
-      icon: opts.icon,
-      workspaceId: opts.workspaceId,
-      partitionId: partition,
-    };
-
-    if (environment.value === "tauri" && import.meta.client) {
-      try {
-        const { Webview } = await import("@tauri-apps/api/webview");
-        const { getCurrentWindow } = await import("@tauri-apps/api/window");
-        const { LogicalPosition, LogicalSize } = await import("@tauri-apps/api/dpi");
-
-        const label = webviewLabel(opts.platformSlug, partition);
-        const appWindow = getCurrentWindow();
-
-        await hideAllWebviews();
-
-        const existing = await Webview.getByLabel(label);
-        const nativeSize = await appWindow.innerSize();
-        const scaleFactor = await appWindow.scaleFactor();
-        const logicalSize = nativeSize.toLogical(scaleFactor);
-        const b = opts.bounds || {
-          x: 0,
-          y: 48,
-          width: logicalSize.width,
-          height: Math.max(1, logicalSize.height - 48),
-        };
-
-        const pos = new LogicalPosition(Math.round(b.x), Math.round(b.y));
-        const size = new LogicalSize(Math.round(b.width), Math.round(b.height));
-
-        if (existing) {
-          await existing.setPosition(pos);
-          await existing.setSize(size);
-          await existing.show();
-          await existing.setFocus();
-        }
-        else {
-          const webview = new Webview(appWindow, label, {
-            url: opts.targetUrl,
-            x: Math.round(b.x),
-            y: Math.round(b.y),
-            width: Math.round(b.width),
-            height: Math.round(b.height),
-            focus: true,
-            dragDropEnabled: true,
-            dataStoreIdentifier: dataStoreIdentifier(partition),
-          });
-
-          webview.once("tauri://created", async () => {
-            try {
-              await webview.setPosition(pos);
-              await webview.setSize(size);
-              await webview.show();
-              await webview.setFocus();
-              console.info(`[TAURI EMBED SUCCESS] Child webview aligned to full screen: ${label}`);
-            }
-            catch (error) {
-              console.error("[TAURI EMBED SETUP ERROR]", error);
-            }
-          });
-          webview.once("tauri://error", (event) => {
-            console.error("[TAURI EMBED CREATE ERROR]", event);
-          });
-        }
-      }
-      catch (e) {
-        console.warn("[TAURI EMBED ERROR]", e);
-        window.open(opts.targetUrl, "_blank", "noopener,noreferrer");
-      }
+    const existingIndex = openTabs.value.findIndex(t => t.id === id);
+    if (existingIndex === -1) {
+      openTabs.value.push({
+        id,
+        platformId: opts.platformId,
+        slug: opts.platformSlug,
+        name: opts.platformName,
+        url: opts.targetUrl,
+        icon: opts.icon,
+        workspaceId: opts.workspaceId,
+        partitionId: partition,
+      });
     }
-    else if (import.meta.client && environment.value !== "web") {
-      window.open(opts.targetUrl, "_blank", "noopener,noreferrer");
-    }
+
+    activeTabId.value = id;
+    await navigateTo(`/dashboard/app/${id}`);
   }
 
-  async function closeActiveViewer() {
-    await hideAllWebviews();
-    activeView.value = null;
+  async function closeTab(id: string) {
+    const index = openTabs.value.findIndex(t => t.id === id);
+    if (index !== -1) {
+      const closedTab = openTabs.value[index];
+      openTabs.value.splice(index, 1);
+      readyTabs.value = readyTabs.value.filter(tabId => tabId !== id);
+
+      if (environment.value === "tauri" && import.meta.client) {
+        try {
+          const { Webview } = await import("@tauri-apps/api/webview");
+          const label = webviewLabel(closedTab.slug, closedTab.partitionId);
+          latestRequestedBounds.delete(label);
+          const wv = await Webview.getByLabel(label);
+          if (wv) {
+            await wv.close();
+          }
+        }
+        catch (e) {
+          console.warn("[TAURI CLOSE ERROR]", e);
+        }
+      }
+
+      if (activeTabId.value === id) {
+        const remainingWorkspaceTabs = openTabs.value.filter(
+          t => t.workspaceId === closedTab.workspaceId,
+        );
+        if (remainingWorkspaceTabs.length > 0) {
+          const nextTab = remainingWorkspaceTabs[remainingWorkspaceTabs.length - 1];
+          activeTabId.value = nextTab.id;
+          await navigateTo(`/dashboard/app/${nextTab.id}`);
+        }
+        else {
+          activeTabId.value = null;
+          await navigateTo("/dashboard");
+        }
+      }
+    }
   }
 
   return {
     environment,
-    activeView,
-    isViewerOpen,
-    launchPlatform,
-    updateWebviewBounds,
+    openTabs,
+    readyTabs,
+    activeTabId,
+    activeTab,
+    openPlatform,
+    syncWebview,
     hideAllWebviews,
-    closeActiveViewer,
+    closeTab,
   };
 }
