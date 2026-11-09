@@ -93,3 +93,86 @@ jobs:
             tar -czvf onelog-arch.tar.gz -C arch-package PKGBUILD .SRCINFO .gitignore
             gh release upload "v${VERSION}" onelog-arch.tar.gz --clobber
           fi
+
+  build-android:
+    name: Build Android
+    needs: publish-tauri
+    permissions:
+      contents: write
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Setup Android SDK & NDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'build-tools;34.0.0 platforms;android-34 ndk;26.1.10909125'
+
+      - name: Set NDK_HOME
+        run: echo "NDK_HOME=$ANDROID_HOME/ndk/26.1.10909125" >> $GITHUB_ENV
+
+      - name: Install Rust targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build Android APK and bundle
+        run: bunx tauri android build --apk --aab
+
+      - name: Upload Android Release Assets
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION=$(jq -r '.version' src-tauri/tauri.conf.json)
+
+          APK_FILE=$(find src-tauri/gen/android/app/build/outputs/apk -name "*.apk" | head -n 1)
+          AAB_FILE=$(find src-tauri/gen/android/app/build/outputs/bundle -name "*.aab" | head -n 1)
+
+          if [ -n "$APK_FILE" ] && [ -f "$APK_FILE" ]; then
+            cp "$APK_FILE" "OneLog_${VERSION}.apk"
+            gh release upload "v${VERSION}" "OneLog_${VERSION}.apk" --clobber
+          fi
+
+          if [ -n "$AAB_FILE" ] && [ -f "$AAB_FILE" ]; then
+            cp "$AAB_FILE" "OneLog_${VERSION}.aab"
+            gh release upload "v${VERSION}" "OneLog_${VERSION}.aab" --clobber
+          fi
+
+  build-ios:
+    name: Build iOS
+    needs: publish-tauri
+    runs-on: macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install Rust targets
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,x86_64-apple-ios,aarch64-apple-ios-sim
+
+      - name: Install frontend dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build iOS app
+        run: bunx tauri ios build
